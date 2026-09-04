@@ -9,6 +9,7 @@ import com.example.teamtask.dto.TaskResponse;
 import com.example.teamtask.dto.TaskRequest;
 import com.example.teamtask.model.User;
 import java.util.List;
+import com.example.teamtask.exception.UserNotFoundException;
 
 @Service
 public class TaskService {
@@ -30,7 +31,7 @@ public class TaskService {
 
     public TaskResponse createTask(TaskRequest request) {
         User user = userRepository.findById(request.getUserId())
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + request.getUserId()));
+                .orElseThrow(() -> new UserNotFoundException(request.getUserId()));
         
         Task task = new Task();
         task.setTitle(request.getTitle());

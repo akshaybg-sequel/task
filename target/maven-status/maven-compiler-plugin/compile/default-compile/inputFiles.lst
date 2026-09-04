@@ -6,9 +6,11 @@ D:\SpringBootProjects\task\src\main\java\com\example\teamtask\dto\UserResponse.j
 D:\SpringBootProjects\task\src\main\java\com\example\teamtask\exception\ErrorResponse.java
 D:\SpringBootProjects\task\src\main\java\com\example\teamtask\exception\GlobalExceptionHandler.java
 D:\SpringBootProjects\task\src\main\java\com\example\teamtask\exception\TaskNotFoundException.java
+D:\SpringBootProjects\task\src\main\java\com\example\teamtask\exception\UserNotFoundException.java
 D:\SpringBootProjects\task\src\main\java\com\example\teamtask\model\Task.java
 D:\SpringBootProjects\task\src\main\java\com\example\teamtask\model\User.java
 D:\SpringBootProjects\task\src\main\java\com\example\teamtask\repository\TaskRepository.java
 D:\SpringBootProjects\task\src\main\java\com\example\teamtask\repository\UserRepository.java
 D:\SpringBootProjects\task\src\main\java\com\example\teamtask\service\TaskService.java
+D:\SpringBootProjects\task\src\main\java\com\example\teamtask\service\UserService.java
 D:\SpringBootProjects\task\src\main\java\com\example\teamtask\TaskApplication.java

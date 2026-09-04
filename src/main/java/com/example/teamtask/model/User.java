@@ -1,5 +1,8 @@
 package com.example.teamtask.model;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
 import java.util.List;
 
 @Entity
@@ -8,9 +11,11 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @NotBlank(message = "Name must not be empty")
+    @Size(min = 3, max = 50, message = "Name must contain at least 3 characters")
     private String name;
 
-    @OneToMany(mappedBy = "user") 
+    @OneToMany(mappedBy = "user", cascade = CascadeType.REMOVE, orphanRemoval = true)
     private List<Task> tasks;
 
 
