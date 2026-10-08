@@ -4,6 +4,8 @@ import com.example.teamtask.exception.TaskNotFoundException;
 import com.example.teamtask.model.Task;
 import com.example.teamtask.repository.TaskRepository;
 import com.example.teamtask.repository.UserRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import com.example.teamtask.dto.TaskResponse;
 import com.example.teamtask.dto.TaskRequest;
@@ -66,5 +68,24 @@ public class TaskService {
         }
 
         taskRepository.deleteById(id);
+    }
+
+    public Page<TaskResponse> getTaskByUser(Long userId, Pageable pageable) {
+        return taskRepository.findByUserId(userId, pageable)
+                .map(this::toResponse);
+    }
+
+    public Page<TaskResponse> getTaskByCompleted(boolean completed, Pageable pageable) {
+        return taskRepository.findByCompleted(completed, pageable)
+                .map(this::toResponse);
+    }
+
+    public Page<TaskResponse> searchTaskByTitle(String title, Pageable pageable) {
+        return taskRepository.findByTitleContainingIgnoreCase(title, pageable)
+                .map(this::toResponse);
+    }
+
+    private TaskResponse toResponse(Task task) {
+        return new TaskResponse(task.getId(), task.getTitle(), task.isCompleted(), task.getUser().getId());
     }
 }
