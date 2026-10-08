@@ -1,4 +1,4 @@
-package com.example.teamtask.exception;
+package com.example.teamtask.dto;
 
 public class ErrorResponse {
     private int status;

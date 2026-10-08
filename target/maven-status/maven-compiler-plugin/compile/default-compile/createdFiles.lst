@@ -1,10 +1,1 @@
-com\example\teamtask\repository\TaskRepository.class
-com\example\teamtask\service\TaskService.class
-com\example\teamtask\exception\ErrorResponse.class
-com\example\teamtask\dto\TaskRequest.class
-com\example\teamtask\controller\TaskController.class
-com\example\teamtask\dto\TaskResponse.class
-com\example\teamtask\exception\TaskNotFoundException.class
-com\example\teamtask\model\Task.class
-com\example\teamtask\exception\GlobalExceptionHandler.class
-com\example\teamtask\TaskApplication.class
+com/example/teamtask/dto/ErrorResponse.class
