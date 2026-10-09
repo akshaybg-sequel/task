@@ -1,0 +1,199 @@
+#############################################################
+#  Team Task API - test notes
+#
+#  How to use:
+#    1. Start MySQL (database "taskdb" must exist)
+#    2. Start the app:  ./mvnw spring-boot:run
+#    3. In VS Code, install the "REST Client" extension (humao.rest-client)
+#    4. Click "Send Request" above any request below
+#
+#  IDs assume an empty database: users 1-3, tasks 1-5.
+#  Run the sections in order. Run "Delete" last.
+#############################################################
+
+@baseUrl = http://localhost:8080
+
+
+#############################################################
+#  1. CREATE TEST DATA
+#############################################################
+
+### Create user 1 - Alice
+POST {{baseUrl}}/users
+Content-Type: application/json
+
+{ "name": "Alice" }
+
+### Create user 2 - Bob
+POST {{baseUrl}}/users
+Content-Type: application/json
+
+{ "name": "Bob" }
+
+### Create user 3 - Alina (will have no tasks)
+POST {{baseUrl}}/users
+Content-Type: application/json
+
+{ "name": "Alina" }
+
+### Create task 1 (Alice)
+# Always send "completed" in task JSON
+POST {{baseUrl}}/tasks
+Content-Type: application/json
+
+{ "title": "Learn Spring Boot", "completed": false, "userId": 1 }
+
+### Create task 2 (Alice)
+POST {{baseUrl}}/tasks
+Content-Type: application/json
+
+{ "title": "Spring Data JPA", "completed": true, "userId": 1 }
+
+### Create task 3 (Alice)
+POST {{baseUrl}}/tasks
+Content-Type: application/json
+
+{ "title": "Write tests", "completed": false, "userId": 1 }
+
+### Create task 4 (Bob)
+POST {{baseUrl}}/tasks
+Content-Type: application/json
+
+{ "title": "Fix bug", "completed": true, "userId": 2 }
+
+### Create task 5 (Bob)
+POST {{baseUrl}}/tasks
+Content-Type: application/json
+
+{ "title": "Deploy app", "completed": false, "userId": 2 }
+
+
+#############################################################
+#  2. USER APIs
+#############################################################
+
+### Get all users (plain list)
+GET {{baseUrl}}/users
+
+### Get user by id
+GET {{baseUrl}}/users/1
+
+### Search users by name  ->  Alice, Alina
+GET {{baseUrl}}/users/search?name=ali&page=0&size=10
+
+### Search users by name, sorted by name descending  ->  Alina, Alice
+GET {{baseUrl}}/users/search?name=ali&page=0&size=10&sort=name,desc
+
+
+#############################################################
+#  3. TASK APIs
+#############################################################
+
+### Get all tasks (plain list)
+GET {{baseUrl}}/tasks
+
+### Get task by id
+GET {{baseUrl}}/tasks/1
+
+### Update task
+PUT {{baseUrl}}/tasks/1
+Content-Type: application/json
+
+{ "title": "Learn Spring Boot 4", "completed": true, "userId": 1 }
+
+
+#############################################################
+#  4. PAGINATION / SORTING / FILTERING
+#  Check in each response: content, totalElements, totalPages, number
+#############################################################
+
+### Tasks of user 1  ->  3 tasks
+GET {{baseUrl}}/tasks/user/1?page=0&size=10
+
+### Tasks of user 1, 2 per page - page 0  ->  2 tasks, totalPages = 2
+GET {{baseUrl}}/tasks/user/1?page=0&size=2
+
+### Tasks of user 1, 2 per page - page 1  ->  1 task
+GET {{baseUrl}}/tasks/user/1?page=1&size=2
+
+### Tasks of user 1, sorted by title A-Z
+GET {{baseUrl}}/tasks/user/1?page=0&size=10&sort=title,asc
+
+### Tasks of user 1, newest first
+GET {{baseUrl}}/tasks/user/1?page=0&size=10&sort=id,desc
+
+### Completed tasks
+GET {{baseUrl}}/tasks/completed?completed=true&page=0&size=10
+
+### Pending tasks, sorted by title
+GET {{baseUrl}}/tasks/completed?completed=false&page=0&size=10&sort=title,asc
+
+### Search tasks by title  ->  "Learn Spring Boot 4", "Spring Data JPA"
+GET {{baseUrl}}/tasks/search?title=spring&page=0&size=10
+
+### Search is case-insensitive, sorted by title descending
+GET {{baseUrl}}/tasks/search?title=SPRING&page=0&size=10&sort=title,desc
+
+
+#############################################################
+#  5. ERROR CASES
+#############################################################
+
+### 404 - user not found
+GET {{baseUrl}}/users/999
+
+### 404 - task not found
+GET {{baseUrl}}/tasks/999
+
+### 404 - create task for a user that doesn't exist
+POST {{baseUrl}}/tasks
+Content-Type: application/json
+
+{ "title": "Orphan task", "completed": false, "userId": 999 }
+
+### 400 - name too short
+POST {{baseUrl}}/users
+Content-Type: application/json
+
+{ "name": "Al" }
+
+### 400 - title too short
+POST {{baseUrl}}/tasks
+Content-Type: application/json
+
+{ "title": "Hi", "completed": false, "userId": 1 }
+
+### 400 - missing "completed" query param
+GET {{baseUrl}}/tasks/completed
+
+### 400 - missing "title" query param
+GET {{baseUrl}}/tasks/search
+
+### Empty page - user 3 has no tasks  ->  content: []
+GET {{baseUrl}}/tasks/user/3?page=0&size=10
+
+### Known gap: no userId returns 500 (userId has no @NotNull)
+POST {{baseUrl}}/tasks
+Content-Type: application/json
+
+{ "title": "No user task", "completed": false }
+
+### Known gap: user that doesn't exist returns an empty page, not 404
+GET {{baseUrl}}/tasks/user/999?page=0&size=10
+
+
+#############################################################
+#  6. DELETE (run last)
+#############################################################
+
+### Delete task 5  ->  204 No Content
+DELETE {{baseUrl}}/tasks/5
+
+### Check task 5 is gone  ->  404
+GET {{baseUrl}}/tasks/5
+
+### Delete user 2  ->  204, also deletes Bob's tasks (cascade)
+DELETE {{baseUrl}}/users/2
+
+### Check Bob's task 4 is gone  ->  404
+GET {{baseUrl}}/tasks/4
