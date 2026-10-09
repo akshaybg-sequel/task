@@ -6,6 +6,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import com.example.teamtask.model.User;
 import com.example.teamtask.service.UserService;
 import com.example.teamtask.dto.UserResponse;
@@ -32,6 +35,11 @@ public class UserController {
     @GetMapping
     public List<UserResponse> getUsers() {
         return userService.getAllUsers();
+    }
+
+    @GetMapping("/search")
+    public Page<UserResponse> searchUserByName(@RequestParam String name, Pageable pageable) {
+        return userService.searchUserByName(name, pageable);
     }
 
     @GetMapping("/{id}")

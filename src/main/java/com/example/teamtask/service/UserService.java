@@ -1,5 +1,7 @@
 package com.example.teamtask.service;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import com.example.teamtask.model.User;
 import com.example.teamtask.repository.UserRepository;
 import com.example.teamtask.dto.UserResponse;
@@ -37,5 +39,14 @@ public class UserService {
             throw new UserNotFoundException(id);
         }
         userRepository.deleteById(id);
+    }
+
+    public Page<UserResponse> searchUserByName(String name, Pageable pageable) {
+        return userRepository.findByNameContainingIgnoreCase(name, pageable)
+                .map(this::toResponse);
+    }
+
+    private UserResponse toResponse(User user) {
+        return new UserResponse(user.getId(), user.getName());
     }
 }
