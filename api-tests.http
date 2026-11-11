@@ -13,6 +13,60 @@
 
 @baseUrl = http://localhost:8080/api/v1
 
+#############################################################
+#  0. AUTH
+#############################################################
+
+### Register Alice  ->  201 Created
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{ "name": "Alice", "username": "alice", "password": "alice123" }
+
+### Register Bob  ->  201 Created
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{ "name": "Bob", "username": "bob", "password": "bob12345" }
+
+### Same username again  ->  409 Conflict
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{ "name": "Alice Two", "username": "alice", "password": "another1" }
+
+### Password too short  ->  400
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{ "name": "Carol", "username": "carol", "password": "123" }
+
+### Protected endpoint without login  ->  401
+GET {{baseUrl}}/users
+
+
+
+
+### Basic login as alice  ->  200
+GET {{baseUrl}}/users
+Authorization: Basic alice alice123
+
+### Basic login as bob  ->  200
+GET {{baseUrl}}/users
+Authorization: Basic bob bob12345
+
+### Wrong password  ->  401
+GET {{baseUrl}}/users
+Authorization: Basic alice wrongpass
+
+### Username that doesn't exist  ->  401
+GET {{baseUrl}}/users
+Authorization: Basic zara whatever
+
+### No login  ->  401
+GET {{baseUrl}}/users
+
+
 
 #############################################################
 #  1. CREATE TEST DATA
