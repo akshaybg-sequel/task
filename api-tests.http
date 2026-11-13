@@ -7,193 +7,423 @@
 #    3. In VS Code, install the "REST Client" extension (humao.rest-client)
 #    4. Click "Send Request" above any request below
 #
-#  IDs assume an empty database: users 1-3, tasks 1-5.
-#  Run the sections in order. Run "Delete" last.
+#  START WITH AN EMPTY DATABASE so the IDs match (users 1-3, tasks 1-5).
+#  Run this in MySQL Workbench first:
+#
+#    USE taskdb;
+#    SET FOREIGN_KEY_CHECKS = 0;
+#    TRUNCATE TABLE tasks;
+#    TRUNCATE TABLE `user`;
+#    SET FOREIGN_KEY_CHECKS = 1;
+#
+#  Then run the requests from top to bottom, in order.
+#  Every request title says the expected result:  ->  STATUS  what you should see
 #############################################################
 
-@baseUrl = http://localhost:8080
+@baseUrl = http://localhost:8080/api/v1
+
+# Filled in automatically by the "Login as alice" / "Login as bob" requests
+@token = {{login.response.body.token}}
+@bobToken = {{loginBob.response.body.token}}
 
 
 #############################################################
-#  1. CREATE TEST DATA
+#  0. REGISTER  (public - no token needed)
 #############################################################
 
-### Create user 1 - Alice
-POST {{baseUrl}}/users
+### Register Alice (user 1)  ->  201  { "id": 1, "name": "Alice" }
+POST {{baseUrl}}/auth/register
 Content-Type: application/json
 
-{ "name": "Alice" }
+{ "name": "Alice", "username": "alice", "password": "alice123" }
 
-### Create user 2 - Bob
-POST {{baseUrl}}/users
+### Register Bob (user 2)  ->  201  { "id": 2, "name": "Bob" }
+POST {{baseUrl}}/auth/register
 Content-Type: application/json
 
-{ "name": "Bob" }
+{ "name": "Bob", "username": "bob", "password": "bob12345" }
 
-### Create user 3 - Alina (will have no tasks)
-POST {{baseUrl}}/users
+### Register Alina (user 3, will have no tasks)  ->  201  { "id": 3, "name": "Alina" }
+POST {{baseUrl}}/auth/register
 Content-Type: application/json
 
-{ "name": "Alina" }
+{ "name": "Alina", "username": "alina", "password": "alina123" }
 
-### Create task 1 (Alice)
+### Same username again  ->  409  "Username already taken: alice"
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{ "name": "Alice Two", "username": "alice", "password": "another1" }
+
+### Password too short  ->  400  password size message
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{ "name": "Carol", "username": "carol", "password": "123" }
+
+### Name too short  ->  400  name size message
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{ "name": "Al", "username": "carol", "password": "carol123" }
+
+### Username missing  ->  400  username required message
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{ "name": "Carol", "password": "carol123" }
+
+
+#############################################################
+#  1. LOGIN  (public - returns a token)
+#############################################################
+
+### Login as alice  ->  200  { "token": "eyJ..." }   (fills {{token}})
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{ "username": "alice", "password": "alice123" }
+
+### Login as bob  ->  200  { "token": "eyJ..." }   (fills {{bobToken}}, used in section 7)
+# @name loginBob
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{ "username": "bob", "password": "bob12345" }
+
+### Wrong password  ->  401  "Invalid username or password"
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{ "username": "alice", "password": "wrongpass" }
+
+### Unknown user  ->  401  "Invalid username or password" (same message on purpose)
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{ "username": "zara", "password": "whatever" }
+
+### Empty password  ->  400  "Password is required"
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{ "username": "alice", "password": "" }
+
+### Empty username  ->  400  "Username is required"
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{ "username": "", "password": "alice123" }
+
+
+#############################################################
+#  2. TOKEN CHECKS  (the JWT filter)
+#############################################################
+
+### No Authorization header  ->  401  (empty body)
+GET {{baseUrl}}/users
+
+### Valid token  ->  200  [ Alice, Bob, Alina ]
+GET {{baseUrl}}/users
+Authorization: Bearer {{token}}
+
+### Bob's token works too  ->  200  [ Alice, Bob, Alina ]
+GET {{baseUrl}}/users
+Authorization: Bearer {{bobToken}}
+
+### Basic login no longer works  ->  401
+GET {{baseUrl}}/users
+Authorization: Basic alice alice123
+
+### "Bearer" with no token  ->  401
+GET {{baseUrl}}/users
+Authorization: Bearer
+
+### Wrong word instead of "Bearer"  ->  401
+GET {{baseUrl}}/users
+Authorization: Token {{token}}
+
+### Garbage token  ->  401
+GET {{baseUrl}}/users
+Authorization: Bearer abc.def.ghi
+
+### Forged token: says "alice" but signed with a DIFFERENT key  ->  401  (signature check fails)
+GET {{baseUrl}}/users
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhbGljZSIsImlhdCI6MTc2MjkwMDAwMCwiZXhwIjo0MTAyNDQ0ODAwfQ.RfkZ9qipSfB_O-YdGxL4nA_TPMLhOAglIHmjoPQPcqY
+
+### Expired token: signed with YOUR key, but expired in 2023  ->  401  (expiry check fails)
+# (if you ever change app.jwt.secret this still gives 401, but because of the signature)
+GET {{baseUrl}}/users
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhbGljZSIsImlhdCI6MTcwMDAwMDAwMCwiZXhwIjoxNzAwMDAzNjAwfQ.AhQGCpI9WPAgyalfvlEJkLKg9mgRYcGp_a9SEJIM7GM
+
+### Task endpoints are protected too, no token  ->  401
+GET {{baseUrl}}/tasks
+
+
+#############################################################
+#  3. CREATE TASKS  (all need the token)
+#  POST /tasks returns 200 (not 201) because the controller returns the object directly
+#############################################################
+
+### Create task 1 (Alice)  ->  200  { "id": 1, "title": "Learn Spring Boot", "completed": false, "userId": 1 }
 # Always send "completed" in task JSON
 POST {{baseUrl}}/tasks
 Content-Type: application/json
+Authorization: Bearer {{token}}
 
 { "title": "Learn Spring Boot", "completed": false, "userId": 1 }
 
-### Create task 2 (Alice)
+### Create task 2 (Alice)  ->  200  { "id": 2, "title": "Spring Data JPA", "completed": true, "userId": 1 }
 POST {{baseUrl}}/tasks
 Content-Type: application/json
+Authorization: Bearer {{token}}
 
 { "title": "Spring Data JPA", "completed": true, "userId": 1 }
 
-### Create task 3 (Alice)
+### Create task 3 (Alice)  ->  200  { "id": 3, "title": "Write tests", "completed": false, "userId": 1 }
 POST {{baseUrl}}/tasks
 Content-Type: application/json
+Authorization: Bearer {{token}}
 
 { "title": "Write tests", "completed": false, "userId": 1 }
 
-### Create task 4 (Bob)
+### Create task 4 (Bob)  ->  200  { "id": 4, "title": "Fix bug", "completed": true, "userId": 2 }
 POST {{baseUrl}}/tasks
 Content-Type: application/json
+Authorization: Bearer {{token}}
 
 { "title": "Fix bug", "completed": true, "userId": 2 }
 
-### Create task 5 (Bob)
+### Create task 5 (Bob)  ->  200  { "id": 5, "title": "Deploy app", "completed": false, "userId": 2 }
 POST {{baseUrl}}/tasks
 Content-Type: application/json
+Authorization: Bearer {{token}}
 
 { "title": "Deploy app", "completed": false, "userId": 2 }
 
 
 #############################################################
-#  2. USER APIs
+#  4. USER APIs
 #############################################################
 
-### Get all users (plain list)
+### Get all users  ->  200  [ {1, Alice}, {2, Bob}, {3, Alina} ]   (no passwords!)
 GET {{baseUrl}}/users
+Authorization: Bearer {{token}}
 
-### Get user by id
+### Get user by id  ->  200  { "id": 1, "name": "Alice" }
 GET {{baseUrl}}/users/1
+Authorization: Bearer {{token}}
 
-### Search users by name  ->  Alice, Alina
+### Search users by name  ->  200  content: [ Alice, Alina ], totalElements: 2
 GET {{baseUrl}}/users/search?name=ali&page=0&size=10
+Authorization: Bearer {{token}}
 
-### Search users by name, sorted by name descending  ->  Alina, Alice
+### Search users by name, name descending  ->  200  content: [ Alina, Alice ]
 GET {{baseUrl}}/users/search?name=ali&page=0&size=10&sort=name,desc
+Authorization: Bearer {{token}}
+
+### Search users, no match  ->  200  content: [], totalElements: 0
+GET {{baseUrl}}/users/search?name=zzz&page=0&size=10
+Authorization: Bearer {{token}}
 
 
 #############################################################
-#  3. TASK APIs
+#  5. TASK APIs
 #############################################################
 
-### Get all tasks (plain list)
+### Get all tasks  ->  200  [ tasks 1, 2, 3, 4, 5 ]
 GET {{baseUrl}}/tasks
+Authorization: Bearer {{token}}
 
-### Get task by id
+### Get task by id  ->  200  { "id": 1, "title": "Learn Spring Boot", "completed": false, "userId": 1 }
 GET {{baseUrl}}/tasks/1
+Authorization: Bearer {{token}}
 
-### Update task
+### Update task 1  ->  200  { "id": 1, "title": "Learn Spring Boot 4", "completed": true, "userId": 1 }
 PUT {{baseUrl}}/tasks/1
 Content-Type: application/json
+Authorization: Bearer {{token}}
 
 { "title": "Learn Spring Boot 4", "completed": true, "userId": 1 }
 
+### Check the update was saved  ->  200  title "Learn Spring Boot 4", completed true
+GET {{baseUrl}}/tasks/1
+Authorization: Bearer {{token}}
+
 
 #############################################################
-#  4. PAGINATION / SORTING / FILTERING
+#  6. PAGINATION / SORTING / FILTERING
 #  Check in each response: content, totalElements, totalPages, number
+#  (task 1 is now "Learn Spring Boot 4" and completed = true)
 #############################################################
 
-### Tasks of user 1  ->  3 tasks
+### Tasks of user 1  ->  200  content: tasks 1, 2, 3   totalElements: 3
 GET {{baseUrl}}/tasks/user/1?page=0&size=10
+Authorization: Bearer {{token}}
 
-### Tasks of user 1, 2 per page - page 0  ->  2 tasks, totalPages = 2
+### Tasks of user 1, 2 per page, page 0  ->  200  content: tasks 1, 2   totalPages: 2
 GET {{baseUrl}}/tasks/user/1?page=0&size=2
+Authorization: Bearer {{token}}
 
-### Tasks of user 1, 2 per page - page 1  ->  1 task
+### Tasks of user 1, 2 per page, page 1  ->  200  content: task 3   number: 1
 GET {{baseUrl}}/tasks/user/1?page=1&size=2
+Authorization: Bearer {{token}}
 
-### Tasks of user 1, sorted by title A-Z
+### Tasks of user 1, page past the end  ->  200  content: []   totalElements still 3
+GET {{baseUrl}}/tasks/user/1?page=5&size=2
+Authorization: Bearer {{token}}
+
+### Tasks of user 1, title A-Z  ->  200  "Learn Spring Boot 4", "Spring Data JPA", "Write tests"
 GET {{baseUrl}}/tasks/user/1?page=0&size=10&sort=title,asc
+Authorization: Bearer {{token}}
 
-### Tasks of user 1, newest first
+### Tasks of user 1, newest first  ->  200  ids 3, 2, 1
 GET {{baseUrl}}/tasks/user/1?page=0&size=10&sort=id,desc
+Authorization: Bearer {{token}}
 
-### Completed tasks
+### Tasks of user 3 (Alina has none)  ->  200  content: []   totalElements: 0
+GET {{baseUrl}}/tasks/user/3?page=0&size=10
+Authorization: Bearer {{token}}
+
+### Completed tasks  ->  200  tasks 1, 2, 4   totalElements: 3
 GET {{baseUrl}}/tasks/completed?completed=true&page=0&size=10
+Authorization: Bearer {{token}}
 
-### Pending tasks, sorted by title
+### Pending tasks, title A-Z  ->  200  "Deploy app" (5), "Write tests" (3)
 GET {{baseUrl}}/tasks/completed?completed=false&page=0&size=10&sort=title,asc
+Authorization: Bearer {{token}}
 
-### Search tasks by title  ->  "Learn Spring Boot 4", "Spring Data JPA"
+### Search tasks by title  ->  200  "Learn Spring Boot 4" (1), "Spring Data JPA" (2)
 GET {{baseUrl}}/tasks/search?title=spring&page=0&size=10
+Authorization: Bearer {{token}}
 
-### Search is case-insensitive, sorted by title descending
+### Search is case-insensitive, title Z-A  ->  200  "Spring Data JPA", "Learn Spring Boot 4"
 GET {{baseUrl}}/tasks/search?title=SPRING&page=0&size=10&sort=title,desc
+Authorization: Bearer {{token}}
 
 
 #############################################################
-#  5. ERROR CASES
+#  7. ERROR CASES  (with a valid token)
 #############################################################
 
-### 404 - user not found
+### User not found  ->  404
 GET {{baseUrl}}/users/999
+Authorization: Bearer {{token}}
 
-### 404 - task not found
+### Task not found  ->  404
 GET {{baseUrl}}/tasks/999
+Authorization: Bearer {{token}}
 
-### 404 - create task for a user that doesn't exist
+### Create task for a user that doesn't exist  ->  404  user not found message
 POST {{baseUrl}}/tasks
 Content-Type: application/json
+Authorization: Bearer {{token}}
 
 { "title": "Orphan task", "completed": false, "userId": 999 }
 
-### 400 - name too short
-POST {{baseUrl}}/users
-Content-Type: application/json
-
-{ "name": "Al" }
-
-### 400 - title too short
+### Create task, title too short  ->  400  "Title must contain at least 3 characters"
 POST {{baseUrl}}/tasks
 Content-Type: application/json
+Authorization: Bearer {{token}}
 
 { "title": "Hi", "completed": false, "userId": 1 }
 
-### 400 - missing "completed" query param
-GET {{baseUrl}}/tasks/completed
-
-### 400 - missing "title" query param
-GET {{baseUrl}}/tasks/search
-
-### Empty page - user 3 has no tasks  ->  content: []
-GET {{baseUrl}}/tasks/user/3?page=0&size=10
-
-### Known gap: no userId returns 500 (userId has no @NotNull)
+### Create task, title empty  ->  400  title message
 POST {{baseUrl}}/tasks
 Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{ "title": "", "completed": false, "userId": 1 }
+
+### Update task that doesn't exist  ->  404
+PUT {{baseUrl}}/tasks/999
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{ "title": "Does not exist", "completed": false, "userId": 1 }
+
+### Update task, title too short  ->  400
+PUT {{baseUrl}}/tasks/1
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{ "title": "No", "completed": true, "userId": 1 }
+
+### Missing "completed" query param  ->  400
+GET {{baseUrl}}/tasks/completed
+Authorization: Bearer {{token}}
+
+### Missing "title" query param  ->  400
+GET {{baseUrl}}/tasks/search
+Authorization: Bearer {{token}}
+
+### Missing "name" query param  ->  400
+GET {{baseUrl}}/users/search
+Authorization: Bearer {{token}}
+
+### POST /users was removed in Step 3 (use /auth/register)  ->  405 Method Not Allowed
+POST {{baseUrl}}/users
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{ "name": "Alice" }
+
+### Known gap: no userId  ->  500  (userId has no @NotNull)
+POST {{baseUrl}}/tasks
+Content-Type: application/json
+Authorization: Bearer {{token}}
 
 { "title": "No user task", "completed": false }
 
-### Known gap: user that doesn't exist returns an empty page, not 404
+### Known gap: user that doesn't exist  ->  200 with empty page, not 404
 GET {{baseUrl}}/tasks/user/999?page=0&size=10
+Authorization: Bearer {{token}}
 
 
 #############################################################
-#  6. DELETE (run last)
+#  8. DELETE  (run last)
 #############################################################
 
 ### Delete task 5  ->  204 No Content
 DELETE {{baseUrl}}/tasks/5
+Authorization: Bearer {{token}}
 
 ### Check task 5 is gone  ->  404
 GET {{baseUrl}}/tasks/5
+Authorization: Bearer {{token}}
 
-### Delete user 2  ->  204, also deletes Bob's tasks (cascade)
+### Delete task 5 again  ->  404
+DELETE {{baseUrl}}/tasks/5
+Authorization: Bearer {{token}}
+
+### Delete user 2 (Bob)  ->  204, also deletes Bob's tasks (cascade)
 DELETE {{baseUrl}}/users/2
+Authorization: Bearer {{token}}
 
 ### Check Bob's task 4 is gone  ->  404
 GET {{baseUrl}}/tasks/4
+Authorization: Bearer {{token}}
+
+### Check Bob is gone  ->  404
+GET {{baseUrl}}/users/2
+Authorization: Bearer {{token}}
+
+### Delete user that doesn't exist  ->  404
+DELETE {{baseUrl}}/users/999
+Authorization: Bearer {{token}}
+
+### Bob can't log in any more  ->  401  "Invalid username or password"
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{ "username": "bob", "password": "bob12345" }
+
+### Bob's OLD token (still valid + not expired) but Bob is deleted  ->  401
+# This tests the catch (UsernameNotFoundException) in JwtAuthenticationFilter
+GET {{baseUrl}}/users
+Authorization: Bearer {{bobToken}}
+
+### Alice's token still works  ->  200  [ Alice, Alina ]
+GET {{baseUrl}}/users
+Authorization: Bearer {{token}}
