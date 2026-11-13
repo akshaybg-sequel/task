@@ -1,14 +1,16 @@
-import { Box, CssBaseline, Typography } from '@mui/material'
+import { useState } from 'react'
+import LoginPage from './pages/LoginPage'
+import RegisterPage from './pages/RegisterPage'
 
 function App() {
-  return (
-    <>
-      <CssBaseline />
-      <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <Typography variant="h3">Hello World</Typography>
-      </Box>
-    </>
-  )
+  // Which page to show. Step 11 replaces this with real URLs (React Router).
+  const [page, setPage] = useState('login')
+
+  if (page === 'register') {
+    return <RegisterPage onGoToLogin={() => setPage('login')} />
+  }
+
+  return <LoginPage onGoToRegister={() => setPage('register')} />
 }
 
 export default App
