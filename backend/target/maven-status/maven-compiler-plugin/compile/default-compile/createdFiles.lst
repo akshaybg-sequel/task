@@ -1,8 +1,13 @@
+com/example/teamtask/security/JwtService.class
 com/example/teamtask/exception/UsernameAlreadyExistsException.class
+com/example/teamtask/security/JwtAuthenticationFilter.class
 com/example/teamtask/controller/AuthController.class
 com/example/teamtask/service/AuthService.class
 com/example/teamtask/security/CustomUserDetailsService.class
 com/example/teamtask/config/SecurityConfig.class
+com/example/teamtask/dto/LoginRequest.class
+com/example/teamtask/exception/InvalidCredentialsException.class
+com/example/teamtask/dto/LoginResponse.class
 com/example/teamtask/config/WebConfig.class
 com/example/teamtask/dto/ErrorResponse.class
 com/example/teamtask/dto/RegisterRequest.class

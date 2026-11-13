@@ -5,11 +5,14 @@
 /Users/akshaybg/sequel/task/backend/src/main/java/com/example/teamtask/controller/TaskController.java
 /Users/akshaybg/sequel/task/backend/src/main/java/com/example/teamtask/controller/UserController.java
 /Users/akshaybg/sequel/task/backend/src/main/java/com/example/teamtask/dto/ErrorResponse.java
+/Users/akshaybg/sequel/task/backend/src/main/java/com/example/teamtask/dto/LoginRequest.java
+/Users/akshaybg/sequel/task/backend/src/main/java/com/example/teamtask/dto/LoginResponse.java
 /Users/akshaybg/sequel/task/backend/src/main/java/com/example/teamtask/dto/RegisterRequest.java
 /Users/akshaybg/sequel/task/backend/src/main/java/com/example/teamtask/dto/TaskRequest.java
 /Users/akshaybg/sequel/task/backend/src/main/java/com/example/teamtask/dto/TaskResponse.java
 /Users/akshaybg/sequel/task/backend/src/main/java/com/example/teamtask/dto/UserResponse.java
 /Users/akshaybg/sequel/task/backend/src/main/java/com/example/teamtask/exception/GlobalExceptionHandler.java
+/Users/akshaybg/sequel/task/backend/src/main/java/com/example/teamtask/exception/InvalidCredentialsException.java
 /Users/akshaybg/sequel/task/backend/src/main/java/com/example/teamtask/exception/TaskNotFoundException.java
 /Users/akshaybg/sequel/task/backend/src/main/java/com/example/teamtask/exception/UserNotFoundException.java
 /Users/akshaybg/sequel/task/backend/src/main/java/com/example/teamtask/exception/UsernameAlreadyExistsException.java
@@ -18,6 +21,8 @@
 /Users/akshaybg/sequel/task/backend/src/main/java/com/example/teamtask/repository/TaskRepository.java
 /Users/akshaybg/sequel/task/backend/src/main/java/com/example/teamtask/repository/UserRepository.java
 /Users/akshaybg/sequel/task/backend/src/main/java/com/example/teamtask/security/CustomUserDetailsService.java
+/Users/akshaybg/sequel/task/backend/src/main/java/com/example/teamtask/security/JwtAuthenticationFilter.java
+/Users/akshaybg/sequel/task/backend/src/main/java/com/example/teamtask/security/JwtService.java
 /Users/akshaybg/sequel/task/backend/src/main/java/com/example/teamtask/service/AuthService.java
 /Users/akshaybg/sequel/task/backend/src/main/java/com/example/teamtask/service/TaskService.java
 /Users/akshaybg/sequel/task/backend/src/main/java/com/example/teamtask/service/UserService.java
